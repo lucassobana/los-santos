@@ -669,8 +669,8 @@ export default function AdminCalendarView({
                 return (
                   <Box
                     key={`${item.dateStr}-${idx}`}
-                    minH={{ base: '68px', sm: '88px', md: '100px' }}
-                    p={{ base: 1.5, sm: 2 }}
+                    minH={{ base: '48px', sm: '88px', md: '100px' }}
+                    p={{ base: 1, sm: 2 }}
                     borderRadius="xl"
                     cursor="pointer"
                     transition="all 0.15s ease"
@@ -702,7 +702,7 @@ export default function AdminCalendarView({
                     onClick={() => setSelectedDateStr(item.dateStr)}
                   >
                     {/* Topo da Célula: Número do dia e contador */}
-                    <Flex justify="space-between" align="center" mb={1}>
+                    <Flex justify="space-between" align="center" mb={{ base: 0, sm: 1 }}>
                       <Text
                         fontSize={{ base: 'xs', sm: 'sm' }}
                         fontWeight={isSelected || item.isToday ? '800' : '600'}
@@ -722,9 +722,9 @@ export default function AdminCalendarView({
                       {hasApts && (
                         <Badge
                           borderRadius="full"
-                          px={1.5}
+                          px={{ base: 1, sm: 1.5 }}
                           py={0.2}
-                          fontSize="2xs"
+                          fontSize="3xs"
                           bg={themeBgBadge}
                           color={themeTextBadge}
                           fontWeight="800"
@@ -734,8 +734,28 @@ export default function AdminCalendarView({
                       )}
                     </Flex>
 
-                    {/* Prévia dos Horários Marcados no Dia */}
-                    <VStack spacing={1} align="stretch" overflow="hidden">
+                    {/* Indicador compacto no mobile (pontinhos para não estourar a célula estreita) */}
+                    {hasApts && (
+                      <HStack spacing={0.5} justify="center" mt={0.5} display={{ base: 'flex', sm: 'none' }} flexWrap="wrap">
+                        {dayApts.slice(0, 3).map((apt) => (
+                          <Box
+                            key={apt.id}
+                            w="4px"
+                            h="4px"
+                            borderRadius="full"
+                            bg={themeAccent}
+                          />
+                        ))}
+                        {dayApts.length > 3 && (
+                          <Text fontSize="3xs" color="gray.400" lineHeight="1">
+                            +
+                          </Text>
+                        )}
+                      </HStack>
+                    )}
+
+                    {/* Prévia dos Horários Marcados no Tablet/Desktop */}
+                    <VStack spacing={1} align="stretch" overflow="hidden" display={{ base: 'none', sm: 'flex' }}>
                       {dayApts.slice(0, 2).map((apt) => {
                         const time = apt.scheduledTime || (apt.shift === 'manha' ? 'Manhã' : apt.shift === 'tarde' ? 'Tarde' : 'Noite');
                         const statusStyle = getStatusBadge(apt.status);

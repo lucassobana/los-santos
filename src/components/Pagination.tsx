@@ -115,12 +115,16 @@ export default function Pagination({
       </HStack>
 
       {/* Controles de Navegação (Primeira, Anterior, Números, Próxima, Última) */}
-      <HStack spacing={1.5} justify="center" flexWrap="wrap">
+      <HStack spacing={{ base: 1, sm: 1.5 }} justify="center">
         {/* Botão Primeira Página (<<) */}
         <IconButton
           aria-label="Primeira página"
-          icon={<FiChevronsLeft size={14} />}
+          icon={<FiChevronsLeft size={13} />}
           size="sm"
+          w={{ base: '28px', sm: '34px' }}
+          h={{ base: '28px', sm: '34px' }}
+          minW={{ base: '28px', sm: '34px' }}
+          display={{ base: 'none', sm: 'inline-flex' }}
           variant="outline"
           borderColor={borderColor}
           color="gray.400"
@@ -133,8 +137,11 @@ export default function Pagination({
         {/* Botão Página Anterior (<) */}
         <IconButton
           aria-label="Página anterior"
-          icon={<FiChevronLeft size={14} />}
+          icon={<FiChevronLeft size={13} />}
           size="sm"
+          w={{ base: '28px', sm: '34px' }}
+          h={{ base: '28px', sm: '34px' }}
+          minW={{ base: '28px', sm: '34px' }}
           variant="outline"
           borderColor={borderColor}
           color="gray.400"
@@ -151,11 +158,11 @@ export default function Pagination({
             <Button
               key={p}
               size="sm"
-              w="34px"
-              h="34px"
-              minW="34px"
+              w={{ base: '28px', sm: '34px' }}
+              h={{ base: '28px', sm: '34px' }}
+              minW={{ base: '28px', sm: '34px' }}
               p={0}
-              fontSize="xs"
+              fontSize={{ base: '2xs', sm: 'xs' }}
               fontWeight={isActive ? '800' : '600'}
               borderRadius="lg"
               variant={isActive ? 'solid' : 'outline'}
@@ -176,8 +183,11 @@ export default function Pagination({
         {/* Botão Próxima Página (>) */}
         <IconButton
           aria-label="Próxima página"
-          icon={<FiChevronRight size={14} />}
+          icon={<FiChevronRight size={13} />}
           size="sm"
+          w={{ base: '28px', sm: '34px' }}
+          h={{ base: '28px', sm: '34px' }}
+          minW={{ base: '28px', sm: '34px' }}
           variant="outline"
           borderColor={borderColor}
           color="gray.400"
@@ -190,8 +200,12 @@ export default function Pagination({
         {/* Botão Última Página (>>) */}
         <IconButton
           aria-label="Última página"
-          icon={<FiChevronsRight size={14} />}
+          icon={<FiChevronsRight size={13} />}
           size="sm"
+          w={{ base: '28px', sm: '34px' }}
+          h={{ base: '28px', sm: '34px' }}
+          minW={{ base: '28px', sm: '34px' }}
+          display={{ base: 'none', sm: 'inline-flex' }}
           variant="outline"
           borderColor={borderColor}
           color="gray.400"

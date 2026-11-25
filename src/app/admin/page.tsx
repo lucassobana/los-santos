@@ -2462,9 +2462,9 @@ export default function AdminPage() {
       </Modal>
 
       {/* MODAL DEFINIR HORÁRIO E ENVIAR WHATSAPP (OPÇÃO 1) */}
-      <Modal isOpen={isScheduleModalOpen} onClose={closeScheduleModal} isCentered>
+      <Modal isOpen={isScheduleModalOpen} onClose={closeScheduleModal} isCentered size={{ base: 'full', sm: 'md' }}>
         <ModalOverlay bg="blackAlpha.700" backdropFilter="blur(5px)" />
-        <ModalContent bg="#161922" border="1px solid" borderColor={borderColor} color="white" borderRadius="2xl">
+        <ModalContent bg="#161922" border="1px solid" borderColor={borderColor} color="white" borderRadius={{ base: 'none', sm: '2xl' }}>
           <ModalHeader fontSize="md" fontWeight="800">
             Definir Horário e Agendar
           </ModalHeader>

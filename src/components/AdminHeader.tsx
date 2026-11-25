@@ -72,14 +72,14 @@ export default function AdminHeader({
       borderColor={borderColor}
     >
       {/* Linha Superior: Logo, Identificação e Alternador de Painel */}
-      <Box borderBottom="1px solid" borderColor="rgba(255, 255, 255, 0.05)" py={3}>
-        <Container maxW="container.xl" px={{ base: 4, sm: 6, md: 8 }}>
-          <Flex justify="space-between" align="center" flexWrap="wrap" gap={3}>
+      <Box borderBottom="1px solid" borderColor="rgba(255, 255, 255, 0.05)" py={2.5}>
+        <Container maxW="container.xl" px={{ base: 3, sm: 6, md: 8 }}>
+          <Flex justify="space-between" align="center" flexWrap="wrap" gap={2}>
             {/* Logo Admin */}
-            <HStack spacing={3}>
+            <HStack spacing={{ base: 2, sm: 3 }}>
               <Box
-                w={8}
-                h={8}
+                w={{ base: 7, sm: 8 }}
+                h={{ base: 7, sm: 8 }}
                 borderRadius="lg"
                 bgGradient={
                   isManicure
@@ -91,32 +91,32 @@ export default function AdminHeader({
                 justifyContent="center"
                 fontWeight="900"
                 color="black"
-                fontSize="sm"
+                fontSize={{ base: 'xs', sm: 'sm' }}
               >
                 LS
               </Box>
               <Box>
-                <HStack spacing={2}>
-                  <Text fontWeight="900" fontSize="sm" letterSpacing="wider" color="white">
+                <HStack spacing={1.5}>
+                  <Text fontWeight="900" fontSize={{ base: 'xs', sm: 'sm' }} letterSpacing="wider" color="white">
                     LOS SANTOS
                   </Text>
                   <Badge
                     colorScheme={themeColor}
                     variant="subtle"
                     borderRadius="md"
-                    px={2}
+                    px={1.5}
                     py={0.5}
-                    fontSize="2xs"
+                    fontSize="3xs"
                     fontWeight="800"
                   >
-                    {isManicure ? 'PAINEL MANICURE' : 'BARBEARIA & LOJA'}
+                    {isManicure ? 'MANICURE' : 'BARBEARIA'}
                   </Badge>
                 </HStack>
               </Box>
             </HStack>
 
             {/* Ações Rápidas: Alternar Painel, Link para o Site e Logout */}
-            <HStack spacing={2}>
+            <HStack spacing={1.5}>
               {isManicure ? (
                 <Link href="/admin">
                   <Button
@@ -124,10 +124,11 @@ export default function AdminHeader({
                     variant="outline"
                     colorScheme="yellow"
                     borderRadius="lg"
-                    leftIcon={<FiScissors />}
+                    leftIcon={<FiScissors size={11} />}
                     fontSize="2xs"
+                    px={{ base: 2, sm: 2.5 }}
                   >
-                    Painel Barbearia & Loja
+                    <Text display={{ base: 'none', md: 'inline' }}>Painel </Text>Barbearia
                   </Button>
                 </Link>
               ) : (
@@ -137,10 +138,11 @@ export default function AdminHeader({
                     variant="outline"
                     colorScheme="pink"
                     borderRadius="lg"
-                    leftIcon={<FiHeart />}
+                    leftIcon={<FiHeart size={11} />}
                     fontSize="2xs"
+                    px={{ base: 2, sm: 2.5 }}
                   >
-                    Painel Manicure
+                    <Text display={{ base: 'none', md: 'inline' }}>Painel </Text>Manicure
                   </Button>
                 </Link>
               )}
@@ -151,10 +153,11 @@ export default function AdminHeader({
                   variant="ghost"
                   color="gray.400"
                   _hover={{ color: 'white', bg: 'whiteAlpha.100' }}
-                  rightIcon={<FiExternalLink size={11} />}
+                  leftIcon={<FiExternalLink size={11} />}
                   fontSize="2xs"
+                  px={{ base: 1.5, sm: 2.5 }}
                 >
-                  Ver Site
+                  <Text display={{ base: 'none', sm: 'inline' }}>Ver Site</Text>
                 </Button>
               </Link>
 
@@ -163,24 +166,27 @@ export default function AdminHeader({
                 variant="ghost"
                 color="red.400"
                 _hover={{ bg: 'red.900', color: 'red.200' }}
-                leftIcon={<FiLogOut size={12} />}
+                leftIcon={<FiLogOut size={11} />}
                 fontSize="2xs"
+                px={{ base: 1.5, sm: 2.5 }}
                 onClick={handleLogout}
               >
-                Sair
+                <Text display={{ base: 'none', sm: 'inline' }}>Sair</Text>
               </Button>
             </HStack>
           </Flex>
         </Container>
       </Box>
 
-      {/* Linha Inferior: 3 ABAS PRINCIPAIS (Agenda, Faturamento, Cadastros) */}
+      {/* Linha Inferior: 4 ABAS PRINCIPAIS (Dashboard, Agenda, Faturamento, Cadastros) */}
       <Box py={2}>
-        <Container maxW="container.xl" px={{ base: 4, sm: 6, md: 8 }}>
-          <Flex
+        <Container maxW="container.xl" px={{ base: 3, sm: 6, md: 8 }}>
+          <HStack
+            spacing={2}
             overflowX="auto"
-            gap={2}
-            py={0.5}
+            py={1}
+            px={0.5}
+            w="100%"
             css={{
               '&::-webkit-scrollbar': { display: 'none' },
               scrollbarWidth: 'none',
@@ -191,6 +197,8 @@ export default function AdminHeader({
             <Button
               size="sm"
               borderRadius="xl"
+              flexShrink={0}
+              whiteSpace="nowrap"
               variant={activeTab === 'dashboard' ? 'solid' : 'ghost'}
               bg={activeTab === 'dashboard' ? activeColor : 'transparent'}
               color={activeTab === 'dashboard' ? (isManicure ? 'white' : 'black') : 'gray.400'}
@@ -202,7 +210,7 @@ export default function AdminHeader({
               onClick={() => onTabChange('dashboard')}
               fontSize="xs"
               fontWeight="700"
-              px={4}
+              px={3.5}
             >
               Dashboard
               {agendaCount !== undefined && (
@@ -223,6 +231,8 @@ export default function AdminHeader({
             <Button
               size="sm"
               borderRadius="xl"
+              flexShrink={0}
+              whiteSpace="nowrap"
               variant={activeTab === 'agenda' ? 'solid' : 'ghost'}
               bg={activeTab === 'agenda' ? activeColor : 'transparent'}
               color={activeTab === 'agenda' ? (isManicure ? 'white' : 'black') : 'gray.400'}
@@ -234,15 +244,17 @@ export default function AdminHeader({
               onClick={() => onTabChange('agenda')}
               fontSize="xs"
               fontWeight="700"
-              px={4}
+              px={3.5}
             >
               Agenda
             </Button>
 
-            {/* ABA 2: FATURAMENTO */}
+            {/* ABA 3: FATURAMENTO */}
             <Button
               size="sm"
               borderRadius="xl"
+              flexShrink={0}
+              whiteSpace="nowrap"
               variant={activeTab === 'faturamento' ? 'solid' : 'ghost'}
               bg={activeTab === 'faturamento' ? activeColor : 'transparent'}
               color={activeTab === 'faturamento' ? (isManicure ? 'white' : 'black') : 'gray.400'}
@@ -254,15 +266,17 @@ export default function AdminHeader({
               onClick={() => onTabChange('faturamento')}
               fontSize="xs"
               fontWeight="700"
-              px={4}
+              px={3.5}
             >
               Faturamento
             </Button>
 
-            {/* ABA 3: CADASTROS (SERVIÇOS, ROUPAS, PROFISSIONAIS) */}
+            {/* ABA 4: CADASTROS */}
             <Button
               size="sm"
               borderRadius="xl"
+              flexShrink={0}
+              whiteSpace="nowrap"
               variant={activeTab === 'cadastros' ? 'solid' : 'ghost'}
               bg={activeTab === 'cadastros' ? activeColor : 'transparent'}
               color={activeTab === 'cadastros' ? (isManicure ? 'white' : 'black') : 'gray.400'}
@@ -274,9 +288,9 @@ export default function AdminHeader({
               onClick={() => onTabChange('cadastros')}
               fontSize="xs"
               fontWeight="700"
-              px={4}
+              px={3.5}
             >
-              {isManicure ? 'Cadastros (Procedimentos, Esmaltes, Equipe)' : 'Cadastros (Serviços, Roupas, Barbeiros)'}
+              Cadastros
               {cadastrosCount !== undefined && (
                 <Badge
                   ml={2}
@@ -290,7 +304,7 @@ export default function AdminHeader({
                 </Badge>
               )}
             </Button>
-          </Flex>
+          </HStack>
         </Container>
       </Box>
     </Box>

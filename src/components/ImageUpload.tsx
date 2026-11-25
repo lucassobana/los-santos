@@ -137,11 +137,11 @@ export default function ImageUpload({
               border="1px solid"
               borderColor="#232936"
             >
-              <HStack spacing={4} align="center">
+              <HStack spacing={{ base: 3, sm: 4 }} align={{ base: 'flex-start', sm: 'center' }}>
                 {/* Thumbnail com clique rápido para trocar */}
                 <Box
-                  w="76px"
-                  h="76px"
+                  w={{ base: '68px', sm: '76px' }}
+                  h={{ base: '68px', sm: '76px' }}
                   borderRadius="xl"
                   overflow="hidden"
                   border="1px solid"
@@ -206,14 +206,14 @@ export default function ImageUpload({
                         <Text>Foto Carregada</Text>
                       </HStack>
                     </Badge>
-                    <Text fontSize="2xs" color="gray.400" noOfLines={1} maxW="240px">
+                    <Text fontSize="2xs" color="gray.400" noOfLines={1} maxW={{ base: '160px', sm: '240px' }}>
                       {value.startsWith('data:')
                         ? 'Arquivo otimizado do dispositivo'
                         : value}
                     </Text>
                   </Box>
 
-                  <HStack spacing={2} pt={0.5}>
+                  <HStack spacing={2} pt={0.5} flexWrap="wrap">
                     <Button
                       size="sm"
                       h="34px"
