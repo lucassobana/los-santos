@@ -268,7 +268,7 @@ export default function Navbar() {
                 borderRadius="xl"
                 onClick={() => {
                   window.open(
-                    `https://wa.me/${WHATSAPP_NUMBERS.LOJA_E_BARBEARIA.replace(/\D/g, '')}?text=${encodeURIComponent(
+                    `https://api.whatsapp.com/send?phone=${WHATSAPP_NUMBERS.LOJA_E_BARBEARIA.replace(/\D/g, '')}&text=${encodeURIComponent(
                       'Olá! Gostaria de falar com o atendimento da Los Santos.'
                     )}`,
                     '_blank'

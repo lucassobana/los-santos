@@ -13,6 +13,7 @@ import {
 } from '@chakra-ui/react';
 import Link from 'next/link';
 import {
+  FiGrid,
   FiCalendar,
   FiDollarSign,
   FiPlusSquare,
@@ -23,7 +24,7 @@ import {
 } from 'react-icons/fi';
 import { useAdminAuth } from '@/context/AdminAuthContext';
 
-export type AdminTab = 'agenda' | 'faturamento' | 'cadastros';
+export type AdminTab = 'dashboard' | 'agenda' | 'faturamento' | 'cadastros';
 
 interface AdminHeaderProps {
   currentModule: 'barbearia_loja' | 'manicure';
@@ -186,7 +187,39 @@ export default function AdminHeader({
               WebkitOverflowScrolling: 'touch',
             }}
           >
-            {/* ABA 1: AGENDA */}
+            {/* ABA 1: DASHBOARD */}
+            <Button
+              size="sm"
+              borderRadius="xl"
+              variant={activeTab === 'dashboard' ? 'solid' : 'ghost'}
+              bg={activeTab === 'dashboard' ? activeColor : 'transparent'}
+              color={activeTab === 'dashboard' ? (isManicure ? 'white' : 'black') : 'gray.400'}
+              _hover={{
+                bg: activeTab === 'dashboard' ? activeColor : 'whiteAlpha.100',
+                color: activeTab === 'dashboard' ? (isManicure ? 'white' : 'black') : 'white',
+              }}
+              leftIcon={<FiGrid size={15} />}
+              onClick={() => onTabChange('dashboard')}
+              fontSize="xs"
+              fontWeight="700"
+              px={4}
+            >
+              Dashboard
+              {agendaCount !== undefined && (
+                <Badge
+                  ml={2}
+                  borderRadius="full"
+                  px={1.5}
+                  fontSize="2xs"
+                  bg={activeTab === 'dashboard' ? (isManicure ? 'whiteAlpha.300' : 'blackAlpha.300') : '#232936'}
+                  color={activeTab === 'dashboard' ? (isManicure ? 'white' : 'black') : 'gray.300'}
+                >
+                  {agendaCount}
+                </Badge>
+              )}
+            </Button>
+
+            {/* ABA 2: AGENDA (CALENDÁRIO DE HORÁRIOS) */}
             <Button
               size="sm"
               borderRadius="xl"
@@ -204,18 +237,6 @@ export default function AdminHeader({
               px={4}
             >
               Agenda
-              {agendaCount !== undefined && (
-                <Badge
-                  ml={2}
-                  borderRadius="full"
-                  px={1.5}
-                  fontSize="2xs"
-                  bg={activeTab === 'agenda' ? (isManicure ? 'whiteAlpha.300' : 'blackAlpha.300') : '#232936'}
-                  color={activeTab === 'agenda' ? (isManicure ? 'white' : 'black') : 'gray.300'}
-                >
-                  {agendaCount}
-                </Badge>
-              )}
             </Button>
 
             {/* ABA 2: FATURAMENTO */}

@@ -18,12 +18,20 @@ import {
   Avatar,
   useToast,
   Flex,
+  Modal,
+  ModalOverlay,
+  ModalContent,
+  ModalHeader,
+  ModalBody,
+  ModalFooter,
+  ModalCloseButton,
+  Center,
 } from '@chakra-ui/react';
 import { FiClock, FiCheck } from 'react-icons/fi';
 import { FaWhatsapp } from 'react-icons/fa';
 import { INITIAL_MANICURE_SERVICES, INITIAL_PROFESSIONALS } from '@/lib/mockData';
 import { ManicureService, Professional } from '@/types';
-import { generateBookingWhatsAppUrl } from '@/lib/whatsapp';
+import { generateBookingWhatsAppUrl, formatBookingMessage } from '@/lib/whatsapp';
 import { createDbAppointment, getDbProfessionals, getDbServices } from '@/services/db';
 
 export default function ManicurePublicPage() {
@@ -42,6 +50,21 @@ export default function ManicurePublicPage() {
   const [customerPhone, setCustomerPhone] = useState<string>('');
   const [notes, setNotes] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+  const [isConfirmModalOpen, setIsConfirmModalOpen] = useState<boolean>(false);
+  const [isRegistering, setIsRegistering] = useState<boolean>(false);
+  const [pendingBooking, setPendingBooking] = useState<{
+    customerName: string;
+    customerPhone: string;
+    serviceId: string;
+    serviceName: string;
+    professionalId?: string;
+    professionalName: string;
+    date: string;
+    shift: 'manha' | 'tarde' | 'noite';
+    price: number;
+    notes?: string;
+    url: string;
+  } | null>(null);
 
   useEffect(() => {
     async function loadData() {
@@ -80,6 +103,18 @@ export default function ManicurePublicPage() {
       return;
     }
 
+    if (!customerPhone.trim()) {
+      toast({
+        title: 'Informe seu WhatsApp / Telefone',
+        description: 'Digite seu telefone com DDD (apenas números).',
+        status: 'warning',
+        duration: 4000,
+        isClosable: true,
+        position: 'top-right',
+      });
+      return;
+    }
+
     if (!selectedService) {
       toast({
         title: 'Selecione um procedimento',
@@ -92,46 +127,106 @@ export default function ManicurePublicPage() {
       return;
     }
 
-    try {
-      setIsSubmitting(true);
-      // Salva no banco de dados com status 'solicitado'
-      await createDbAppointment({
-        customerName,
-        customerPhone,
-        serviceId: selectedService.id,
-        serviceName: selectedService.name,
-        professionalId: selectedManicurist?.id,
-        professionalName: selectedManicurist?.name || 'Qualquer manicure disponível',
-        date: selectedDate,
-        shift: selectedShift,
-        price: selectedService.price,
-        status: 'solicitado',
-        notes: notes ? `[Manicure] ${notes}` : '[Manicure]',
-        type: 'manicure',
-      });
-    } catch (e) {
-      console.warn('Erro ao registrar no banco, prosseguindo com WhatsApp:', e);
-    } finally {
-      setIsSubmitting(false);
-    }
-
-    const url = generateBookingWhatsAppUrl({
-      type: 'manicure',
+    const bookingParams = {
+      type: 'manicure' as const,
       serviceName: selectedService.name,
       professionalName: selectedManicurist?.name || 'Qualquer manicure disponível',
       date: selectedDate,
       shift: selectedShift,
       customerName,
       notes,
-    });
+    };
 
+    const url = generateBookingWhatsAppUrl(bookingParams);
+
+    if (typeof navigator !== 'undefined' && navigator.clipboard) {
+      try {
+        const msg = formatBookingMessage(bookingParams);
+        navigator.clipboard.writeText(msg).catch(() => {});
+      } catch {
+        // Fallback se permissão de clipboard estiver desativada
+      }
+    }
+
+    // Abre o WhatsApp para a cliente enviar a mensagem
     window.open(url, '_blank');
 
+    // Armazena os dados do agendamento aguardando a confirmação de envio da cliente
+    setPendingBooking({
+      customerName,
+      customerPhone,
+      serviceId: selectedService.id,
+      serviceName: selectedService.name,
+      professionalId: selectedManicurist?.id,
+      professionalName: selectedManicurist?.name || 'Qualquer manicure disponível',
+      date: selectedDate,
+      shift: selectedShift,
+      price: selectedService.price,
+      notes,
+      url,
+    });
+    setIsConfirmModalOpen(true);
+  };
+
+  const handleConfirmSent = async () => {
+    if (!pendingBooking) return;
+    try {
+      setIsRegistering(true);
+      // Salva no banco de dados SOMENTE após a cliente confirmar que enviou a mensagem
+      await createDbAppointment({
+        customerName: pendingBooking.customerName,
+        customerPhone: pendingBooking.customerPhone,
+        serviceId: pendingBooking.serviceId,
+        serviceName: pendingBooking.serviceName,
+        professionalId: pendingBooking.professionalId,
+        professionalName: pendingBooking.professionalName,
+        date: pendingBooking.date,
+        shift: pendingBooking.shift,
+        price: pendingBooking.price,
+        status: 'solicitado',
+        notes: pendingBooking.notes ? `[Manicure] ${pendingBooking.notes}` : '[Manicure]',
+        type: 'manicure',
+      });
+
+      toast({
+        title: 'Agendamento registrado!',
+        description: 'Seu pedido foi incluído na agenda. Nossa equipe entrará em contato para confirmar o horário.',
+        status: 'success',
+        duration: 5000,
+        isClosable: true,
+        position: 'top-right',
+      });
+
+      // Limpa os campos do formulário
+      setCustomerName('');
+      setCustomerPhone('');
+      setNotes('');
+      setIsConfirmModalOpen(false);
+      setPendingBooking(null);
+    } catch (e) {
+      console.error('Erro ao registrar agendamento:', e);
+      toast({
+        title: 'Erro ao registrar no sistema',
+        description: 'Houve uma falha ao salvar na agenda, mas sua mensagem foi enviada no WhatsApp!',
+        status: 'warning',
+        duration: 5000,
+        isClosable: true,
+        position: 'top-right',
+      });
+      setIsConfirmModalOpen(false);
+    } finally {
+      setIsRegistering(false);
+    }
+  };
+
+  const handleCancelBooking = () => {
+    setIsConfirmModalOpen(false);
+    setPendingBooking(null);
     toast({
-      title: 'Solicitação Enviada!',
-      description: 'Nossa equipe irá verificar a agenda e enviar a confirmação de horário via WhatsApp.',
-      status: 'success',
-      duration: 6000,
+      title: 'Agendamento não registrado',
+      description: 'Como a mensagem não foi enviada, o horário não foi incluído na agenda.',
+      status: 'info',
+      duration: 4000,
       isClosable: true,
       position: 'top-right',
     });
@@ -431,16 +526,23 @@ export default function ManicurePublicPage() {
 
                   <FormControl isRequired mb={3}>
                     <FormLabel fontSize="xs" fontWeight="600" color="gray.300">
-                      Seu WhatsApp / Telefone
+                      Seu WhatsApp / Telefone (somente números)
                     </FormLabel>
                     <Input
-                      placeholder="Ex: (11) 98888-8888"
+                      type="tel"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      placeholder="Ex: 35992158424 (com DDD)"
                       borderRadius="lg"
                       size="sm"
                       bg="#0b0d13"
                       borderColor={borderColor}
                       value={customerPhone}
-                      onChange={(e) => setCustomerPhone(e.target.value)}
+                      maxLength={15}
+                      onChange={(e) => {
+                        const numericOnly = e.target.value.replace(/\D/g, '');
+                        setCustomerPhone(numericOnly);
+                      }}
                     />
                   </FormControl>
 
@@ -485,6 +587,118 @@ export default function ManicurePublicPage() {
           </Box>
         </SimpleGrid>
       </Container>
+
+      {/* Modal de confirmação: Só entra na agenda após a cliente confirmar que enviou no WhatsApp */}
+      <Modal isOpen={isConfirmModalOpen} onClose={handleCancelBooking} isCentered size="md">
+        <ModalOverlay bg="blackAlpha.700" backdropFilter="blur(5px)" />
+        <ModalContent bg="#161922" border="1px solid" borderColor={borderColor} color="white" borderRadius="2xl" mx={4}>
+          <ModalHeader pt={6} pb={2}>
+            <HStack spacing={3}>
+              <Center w={10} h={10} borderRadius="full" bg="rgba(37, 211, 102, 0.15)" color="#25D366" border="1px solid" borderColor="#25D366">
+                <FaWhatsapp size={22} />
+              </Center>
+              <Box>
+                <Heading size="md" color="white">
+                  Mensagem Enviada?
+                </Heading>
+                <Text fontSize="xs" color="gray.400">
+                  Confirmação de Agendamento
+                </Text>
+              </Box>
+            </HStack>
+          </ModalHeader>
+          <ModalCloseButton color="gray.400" top={4} right={4} />
+
+          <ModalBody py={4}>
+            <VStack spacing={4} align="stretch">
+              <Text fontSize="sm" color="gray.300">
+                Abrimos o seu WhatsApp com o texto do agendamento pré-preenchido para a nossa equipe.
+              </Text>
+
+              {pendingBooking && (
+                <Box bg="#0b0d13" p={4} borderRadius="xl" border="1px solid" borderColor={borderColor}>
+                  <VStack spacing={2} align="stretch" fontSize="xs">
+                    <HStack justify="space-between">
+                      <Text color="gray.400">Cliente:</Text>
+                      <Text fontWeight="700" color="white">{pendingBooking.customerName}</Text>
+                    </HStack>
+                    <HStack justify="space-between">
+                      <Text color="gray.400">Serviço:</Text>
+                      <Text fontWeight="700" color="brand.400">{pendingBooking.serviceName}</Text>
+                    </HStack>
+                    <HStack justify="space-between">
+                      <Text color="gray.400">Manicure:</Text>
+                      <Text fontWeight="600" color="white">{pendingBooking.professionalName}</Text>
+                    </HStack>
+                    <HStack justify="space-between">
+                      <Text color="gray.400">Data e Turno:</Text>
+                      <Text fontWeight="600" color="white">
+                        {pendingBooking.date.includes('-')
+                          ? pendingBooking.date.split('-').reverse().join('/')
+                          : pendingBooking.date}{' '}
+                        • {pendingBooking.shift.charAt(0).toUpperCase() + pendingBooking.shift.slice(1)}
+                      </Text>
+                    </HStack>
+                  </VStack>
+                </Box>
+              )}
+
+              <Box bg="rgba(37, 211, 102, 0.08)" border="1px dashed" borderColor="#25D366" p={3} borderRadius="xl" textAlign="center">
+                <Text fontSize="xs" fontWeight="700" color="#25D366" textTransform="uppercase">
+                  Importante
+                </Text>
+                <Text fontSize="xs" color="gray.300" mt={1}>
+                  O horário só aparecerá na agenda da manicure após você confirmar que apertou o botão <strong>Enviar</strong> no WhatsApp.
+                </Text>
+              </Box>
+
+              <Center>
+                <Button
+                  size="xs"
+                  variant="ghost"
+                  color="#25D366"
+                  _hover={{ bg: 'whiteAlpha.100' }}
+                  leftIcon={<FaWhatsapp />}
+                  onClick={() => pendingBooking?.url && window.open(pendingBooking.url, '_blank')}
+                >
+                  Não abriu? Clique para reabrir o WhatsApp
+                </Button>
+              </Center>
+            </VStack>
+          </ModalBody>
+
+          <ModalFooter pb={6} pt={2} display="flex" flexDirection="column" gap={2}>
+            <Button
+              w="100%"
+              size="lg"
+              bg="#25D366"
+              color="white"
+              fontWeight="700"
+              fontSize="sm"
+              borderRadius="xl"
+              _hover={{ bg: '#1ebc57', transform: 'translateY(-1px)' }}
+              isLoading={isRegistering}
+              leftIcon={<FiCheck size={18} />}
+              onClick={handleConfirmSent}
+            >
+              Sim, já enviei a mensagem!
+            </Button>
+            <Button
+              w="100%"
+              size="md"
+              variant="ghost"
+              color="gray.400"
+              borderRadius="xl"
+              fontSize="xs"
+              _hover={{ bg: 'whiteAlpha.100', color: 'white' }}
+              onClick={handleCancelBooking}
+              isDisabled={isRegistering}
+            >
+              Não enviei / Cancelar
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
     </Box>
   );
 }

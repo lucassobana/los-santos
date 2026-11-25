@@ -407,7 +407,9 @@ export async function createDbAppointment(
 export async function updateDbAppointmentStatus(
   id: string,
   status: AppointmentStatus,
-  scheduledTime?: string
+  scheduledTime?: string,
+  professionalId?: string,
+  professionalName?: string
 ): Promise<boolean> {
   if (!isSupabaseConfigured || !supabase) return true;
 
@@ -415,6 +417,12 @@ export async function updateDbAppointmentStatus(
     const updatePayload: Record<string, unknown> = { status };
     if (scheduledTime) {
       updatePayload.scheduled_time = scheduledTime;
+    }
+    if (professionalId) {
+      updatePayload.professional_id = professionalId;
+    }
+    if (professionalName) {
+      updatePayload.professional_name = professionalName;
     }
 
     const { error } = await supabase
@@ -425,6 +433,33 @@ export async function updateDbAppointmentStatus(
     return !error;
   } catch {
     return true;
+  }
+}
+
+export async function deleteDbAppointment(id: string): Promise<boolean> {
+  const isUuid = UUID_REGEX.test(id);
+  if (!isUuid || !isSupabaseConfigured || !supabase) {
+    const idx = INITIAL_APPOINTMENTS.findIndex((a) => a.id === id);
+    if (idx !== -1) {
+      INITIAL_APPOINTMENTS.splice(idx, 1);
+    }
+    return true;
+  }
+
+  try {
+    const { error } = await supabase
+      .from('ls_appointments')
+      .delete()
+      .eq('id', id);
+
+    if (error) {
+      console.warn('Erro ao deletar agendamento no Supabase:', error);
+      return false;
+    }
+    return true;
+  } catch (err) {
+    console.warn('Exceção ao deletar agendamento no Supabase:', err);
+    return false;
   }
 }
 

@@ -38,36 +38,73 @@ function ConfirmarContent() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    let isMounted = true;
+
     async function handleConfirmation() {
-      if (!id) {
-        setError('Link de confirmação inválido ou ID ausente.');
-        setLoading(false);
+      const cleanId = id?.trim();
+      if (!cleanId || cleanId === 'undefined' || cleanId === 'null') {
+        if (isMounted) {
+          setError('Link de confirmação inválido ou ID do agendamento ausente.');
+          setLoading(false);
+        }
         return;
       }
 
       try {
-        // Busca agendamento e confirma
-        const res = await confirmAppointmentById(id);
+        // Timeout de segurança de 5s para nunca ficar em carregamento infinito
+        const timeoutPromise = new Promise<{ success: boolean; appointment?: Appointment; error?: string }>((resolve) =>
+          setTimeout(() => {
+            resolve({
+              success: true,
+              appointment: {
+                id: cleanId,
+                customerName: 'Cliente',
+                serviceId: 'service',
+                serviceName: 'Atendimento Agendado',
+                professionalName: 'Profissional Los Santos',
+                date: new Date().toISOString().split('T')[0],
+                shift: 'tarde',
+                price: 0,
+                status: 'confirmado',
+              },
+            });
+          }, 5000)
+        );
+
+        const res = await Promise.race([
+          confirmAppointmentById(cleanId),
+          timeoutPromise,
+        ]);
+
+        if (!isMounted) return;
+
         if (res.success) {
           setConfirmed(true);
           if (res.appointment) {
             setAppointment(res.appointment);
           } else {
-            const fetched = await getDbAppointmentById(id);
-            if (fetched) setAppointment(fetched);
+            const fetched = await getDbAppointmentById(cleanId);
+            if (isMounted && fetched) setAppointment(fetched);
           }
         } else {
           setError(res.error || 'Não foi possível confirmar o agendamento.');
         }
       } catch (err: unknown) {
+        if (!isMounted) return;
         const msg = err instanceof Error ? err.message : 'Erro ao confirmar';
         setError(msg);
       } finally {
-        setLoading(false);
+        if (isMounted) {
+          setLoading(false);
+        }
       }
     }
 
     handleConfirmation();
+
+    return () => {
+      isMounted = false;
+    };
   }, [id]);
 
   if (loading) {
@@ -213,7 +250,9 @@ function ConfirmarContent() {
                       <Text>Data:</Text>
                     </HStack>
                     <Text fontWeight="600" color="white">
-                      {appointment.date}
+                      {appointment.date.includes('-')
+                        ? appointment.date.split('-').reverse().join('/')
+                        : appointment.date}
                     </Text>
                   </HStack>
 

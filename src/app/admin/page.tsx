@@ -40,6 +40,8 @@ import {
   Avatar,
 } from '@chakra-ui/react';
 import AdminHeader, { AdminTab } from '@/components/AdminHeader';
+import AdminCalendarView from '@/components/AdminCalendarView';
+import Pagination from '@/components/Pagination';
 import AdminAuthGuard from '@/components/AdminAuthGuard';
 import ImageUpload from '@/components/ImageUpload';
 import {
@@ -75,6 +77,7 @@ import {
   getDbAppointments,
   createDbAppointment,
   updateDbAppointmentStatus,
+  deleteDbAppointment,
   getDbOrders,
   createDbOrder,
   updateDbOrderStatus,
@@ -90,7 +93,7 @@ import {
 
 export default function AdminPage() {
   // Controle das 3 Abas Principais do Painel (Agenda, Faturamento, Cadastros)
-  const [adminTab, setAdminTab] = useState<AdminTab>('agenda');
+  const [adminTab, setAdminTab] = useState<AdminTab>('dashboard');
   const [cadastrosSubTab, setCadastrosSubTab] = useState<'servicos' | 'roupas' | 'barbeiros'>('servicos');
 
   // Estados dos Dados
@@ -177,6 +180,7 @@ export default function AdminPage() {
   } = useDisclosure();
   const [activeSchedulingApt, setActiveSchedulingApt] = useState<Appointment | null>(null);
   const [scheduledTimeInput, setScheduledTimeInput] = useState<string>('14:00');
+  const [scheduledProfessionalName, setScheduledProfessionalName] = useState<string>('');
 
   // Estados para formulário de nova roupa
   const [newProductName, setNewProductName] = useState('');
@@ -300,9 +304,20 @@ export default function AdminPage() {
     };
   }, [appointments, orders, filterPeriod, filterBarber, filterSource]);
 
-  // Lista de Agendamentos filtrada
+  // Prioridade de status para exibição no Dashboard:
+  // 1. Solicitado (prioridade máxima) -> 2. Agendado -> 3. Confirmado -> 4. Concluído -> 5. Cancelado
+  const STATUS_PRIORITY: Record<string, number> = {
+    solicitado: 1,
+    pendente: 1,
+    agendado: 2,
+    confirmado: 3,
+    concluido: 4,
+    cancelado: 5,
+  };
+
+  // Lista de Agendamentos filtrada e ordenada por prioridade de status
   const displayedAppointments = useMemo(() => {
-    return appointments.filter((apt) => {
+    const filtered = appointments.filter((apt) => {
       const matchesPeriod = isDateInPeriod(apt.date, filterPeriod);
       const matchesBarber =
         filterBarber === 'todos' || apt.professionalName === filterBarber;
@@ -310,15 +325,39 @@ export default function AdminPage() {
         filterAptStatus === 'todos' || apt.status === filterAptStatus;
       return matchesPeriod && matchesBarber && matchesStatus;
     });
+
+    return [...filtered].sort((a, b) => {
+      const pA = STATUS_PRIORITY[a.status] ?? 99;
+      const pB = STATUS_PRIORITY[b.status] ?? 99;
+      if (pA !== pB) return pA - pB;
+      // Dentro da mesma prioridade, ordena por data mais recente
+      return b.date.localeCompare(a.date);
+    });
   }, [appointments, filterPeriod, filterBarber, filterAptStatus]);
+
+  // Paginação de clientes no Dashboard (Padrão: 20 clientes por página)
+  const [itemsPerPage, setItemsPerPage] = useState<number>(20);
+  const [currentPage, setCurrentPage] = useState<number>(1);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filterPeriod, filterBarber, filterAptStatus, itemsPerPage]);
+
+  const totalPages = Math.ceil(displayedAppointments.length / itemsPerPage) || 1;
+  const paginatedAppointments = useMemo(() => {
+    const start = (currentPage - 1) * itemsPerPage;
+    return displayedAppointments.slice(start, start + itemsPerPage);
+  }, [displayedAppointments, currentPage, itemsPerPage]);
 
   // Ações de Agendamento
   const updateAppointmentStatus = async (
     id: string,
     newStatus: AppointmentStatus,
-    scheduledTime?: string
+    scheduledTime?: string,
+    professionalId?: string,
+    professionalName?: string
   ) => {
-    await updateDbAppointmentStatus(id, newStatus, scheduledTime);
+    await updateDbAppointmentStatus(id, newStatus, scheduledTime, professionalId, professionalName);
     setAppointments((prev) =>
       prev.map((apt) =>
         apt.id === id
@@ -326,6 +365,8 @@ export default function AdminPage() {
               ...apt,
               status: newStatus,
               ...(scheduledTime ? { scheduledTime } : {}),
+              ...(professionalId ? { professionalId } : {}),
+              ...(professionalName ? { professionalName } : {}),
             }
           : apt
       )
@@ -335,6 +376,46 @@ export default function AdminPage() {
       description: `Agendamento marcado como ${newStatus}.`,
       status: 'success',
       duration: 2500,
+      isClosable: true,
+      position: 'top-right',
+    });
+  };
+
+  const handleDeleteAppointment = async (id: string) => {
+    if (!window.confirm('Tem certeza que deseja excluir permanentemente este agendamento cancelado?')) {
+      return;
+    }
+    await deleteDbAppointment(id);
+    setAppointments((prev) => prev.filter((apt) => apt.id !== id));
+    toast({
+      title: 'Agendamento excluído',
+      description: 'O registro cancelado foi excluído com sucesso.',
+      status: 'info',
+      duration: 2500,
+      isClosable: true,
+      position: 'top-right',
+    });
+  };
+
+  const handleDeleteAllCancelled = async () => {
+    const cancelledList = appointments.filter((a) => a.status === 'cancelado');
+    if (cancelledList.length === 0) return;
+    if (
+      !window.confirm(
+        `Tem certeza que deseja excluir permanentemente todos os ${cancelledList.length} agendamentos cancelados?`
+      )
+    ) {
+      return;
+    }
+    for (const apt of cancelledList) {
+      await deleteDbAppointment(apt.id);
+    }
+    setAppointments((prev) => prev.filter((a) => a.status !== 'cancelado'));
+    toast({
+      title: 'Agendamentos cancelados excluídos',
+      description: `${cancelledList.length} registros foram excluídos com sucesso.`,
+      status: 'info',
+      duration: 3000,
       isClosable: true,
       position: 'top-right',
     });
@@ -369,17 +450,46 @@ export default function AdminPage() {
   const handleOpenScheduleModal = (apt: Appointment) => {
     setActiveSchedulingApt(apt);
     setScheduledTimeInput(apt.scheduledTime || '14:00');
+    // Pre-seleciona o barbeiro existente ou o primeiro disponível se o cliente não escolheu nenhum
+    const foundBarber = barbers.find(
+      (b) =>
+        b.name.toLowerCase() === apt.professionalName?.toLowerCase() ||
+        b.id === apt.professionalId
+    );
+    setScheduledProfessionalName(foundBarber ? foundBarber.name : barbers[0]?.name || '');
     openScheduleModal();
   };
 
   const handleConfirmSchedule = async (sendWhatsApp: boolean = false) => {
     if (!activeSchedulingApt) return;
-    await updateAppointmentStatus(activeSchedulingApt.id, 'agendado', scheduledTimeInput);
+
+    if (!scheduledProfessionalName) {
+      toast({
+        title: 'Selecione o profissional',
+        description: 'É obrigatório selecionar qual barbeiro fará o atendimento.',
+        status: 'warning',
+        duration: 3000,
+        isClosable: true,
+      });
+      return;
+    }
+
+    const profObj = barbers.find((b) => b.name === scheduledProfessionalName);
+
+    await updateAppointmentStatus(
+      activeSchedulingApt.id,
+      'agendado',
+      scheduledTimeInput,
+      profObj?.id,
+      scheduledProfessionalName
+    );
 
     if (sendWhatsApp) {
       handleSendWhatsAppConfirmation({
         ...activeSchedulingApt,
         scheduledTime: scheduledTimeInput,
+        professionalName: scheduledProfessionalName,
+        professionalId: profObj?.id,
       });
     }
 
@@ -660,11 +770,11 @@ export default function AdminPage() {
       {/* Conteúdo Principal por Aba */}
       <Container maxW="container.xl" px={{ base: 4, sm: 6, md: 8 }} mt={{ base: 6, md: 8 }}>
         {/* ============================================================== */}
-        {/* ABA 1: AGENDA DA BARBEARIA */}
+        {/* ABA 1: DASHBOARD GERAL DA BARBEARIA */}
         {/* ============================================================== */}
-        {adminTab === 'agenda' && (
+        {adminTab === 'dashboard' && (
           <Box>
-            {/* Topo da Aba de Agenda */}
+            {/* Topo da Aba de Dashboard */}
             <Flex
               direction={{ base: 'column', md: 'row' }}
               justify="space-between"
@@ -675,14 +785,14 @@ export default function AdminPage() {
               <Box>
                 <HStack spacing={2} mb={1}>
                   <Badge colorScheme="yellow" px={2} py={0.5} borderRadius="md" fontSize="2xs" fontWeight="800">
-                    AGENDA BARBEARIA
+                    DASHBOARD BARBEARIA
                   </Badge>
                   <Text fontSize="2xs" color="gray.400">
-                    Controle de Atendimentos
+                    Controle Geral de Atendimentos
                   </Text>
                 </HStack>
                 <Heading as="h2" size={{ base: 'md', sm: 'lg' }} color="white">
-                  Agendamentos dos Barbeiros
+                  Dashboard dos Barbeiros
                 </Heading>
                 <Text color="gray.400" fontSize="xs" mt={1}>
                   Acompanhe e confirme os clientes marcados na barbearia.
@@ -797,9 +907,22 @@ export default function AdminPage() {
                 </Box>
               ) : (
                 <>
+                  {appointments.some((a) => a.status === 'cancelado') && (
+                    <Flex justify="flex-end" mb={3}>
+                      <Button
+                        size="xs"
+                        variant="ghost"
+                        colorScheme="red"
+                        leftIcon={<FiTrash2 />}
+                        onClick={handleDeleteAllCancelled}
+                      >
+                        Excluir todos cancelados ({appointments.filter((a) => a.status === 'cancelado').length})
+                      </Button>
+                    </Flex>
+                  )}
                   {/* VISÃO MOBILE: CARDS */}
                   <VStack spacing={3} display={{ base: 'flex', md: 'none' }} align="stretch">
-                    {displayedAppointments.map((apt) => (
+                    {paginatedAppointments.map((apt) => (
                       <Box
                         key={apt.id}
                         p={4}
@@ -889,6 +1012,17 @@ export default function AdminPage() {
                               Concluir Atendimento
                             </Button>
                           )}
+                          {apt.status === 'cancelado' && (
+                            <Button
+                              size="xs"
+                              colorScheme="red"
+                              variant="outline"
+                              leftIcon={<FiTrash2 />}
+                              onClick={() => handleDeleteAppointment(apt.id)}
+                            >
+                              Excluir
+                            </Button>
+                          )}
                           {apt.status !== 'cancelado' && apt.status !== 'concluido' && (
                             <Button
                               size="xs"
@@ -921,7 +1055,7 @@ export default function AdminPage() {
                         </Tr>
                       </Thead>
                       <Tbody>
-                        {displayedAppointments.map((apt) => (
+                        {paginatedAppointments.map((apt) => (
                           <Tr key={apt.id} _hover={{ bg: 'whiteAlpha.50' }}>
                             <Td fontWeight="600">{apt.date.split('-').reverse().join('/')}</Td>
                             <Td fontWeight="600" color="white">
@@ -999,6 +1133,17 @@ export default function AdminPage() {
                                     Concluir
                                   </Button>
                                 )}
+                                {apt.status === 'cancelado' && (
+                                  <IconButton
+                                    aria-label="Excluir agendamento cancelado"
+                                    icon={<FiTrash2 />}
+                                    size="xs"
+                                    colorScheme="red"
+                                    variant="outline"
+                                    title="Excluir agendamento cancelado"
+                                    onClick={() => handleDeleteAppointment(apt.id)}
+                                  />
+                                )}
                                 {apt.status !== 'cancelado' && apt.status !== 'concluido' && (
                                   <IconButton
                                     aria-label="Cancelar agendamento"
@@ -1017,6 +1162,21 @@ export default function AdminPage() {
                       </Tbody>
                     </Table>
                   </Box>
+
+                  {/* CONTROLE DE PAGINAÇÃO INTERATIVO */}
+                  <Pagination
+                    currentPage={currentPage}
+                    totalItems={displayedAppointments.length}
+                    itemsPerPage={itemsPerPage}
+                    onPageChange={setCurrentPage}
+                    onItemsPerPageChange={(newVal) => {
+                      setItemsPerPage(newVal);
+                      setCurrentPage(1);
+                    }}
+                    colorScheme="yellow"
+                    accentColor="#d9a647"
+                    itemLabel="clientes"
+                  />
                 </>
               )}
             </Box>
@@ -1024,7 +1184,27 @@ export default function AdminPage() {
         )}
 
         {/* ============================================================== */}
-        {/* ABA 2: FATURAMENTO & HISTÓRICO DE VENDAS */}
+        {/* ABA 2: AGENDA DA BARBEARIA (CALENDÁRIO COM HORÁRIOS) */}
+        {/* ============================================================== */}
+        {adminTab === 'agenda' && (
+          <Box>
+            <AdminCalendarView
+              appointments={appointments}
+              professionals={barbers}
+              module="barbearia"
+              onStatusChange={updateAppointmentStatus}
+              onOpenScheduleModal={handleOpenScheduleModal}
+              onSendWhatsApp={handleSendWhatsAppConfirmation}
+              onOpenNewAppointmentModal={(selectedDate) => {
+                if (selectedDate) setNewAptDate(selectedDate);
+                openAppointmentModal();
+              }}
+            />
+          </Box>
+        )}
+
+        {/* ============================================================== */}
+        {/* ABA 3: FATURAMENTO & HISTÓRICO DE VENDAS */}
         {/* ============================================================== */}
         {adminTab === 'faturamento' && (
           <Box>
@@ -2301,6 +2481,32 @@ export default function AdminPage() {
                     <Text color="gray.400">WhatsApp: <strong style={{ color: '#25D366' }}>{activeSchedulingApt.customerPhone}</strong></Text>
                   )}
                 </Box>
+
+                <FormControl isRequired>
+                  <FormLabel fontSize="xs" color="gray.300" fontWeight="600">
+                    Barbeiro Responsável
+                  </FormLabel>
+                  <Select
+                    bg="#0b0d13"
+                    borderColor={borderColor}
+                    value={scheduledProfessionalName}
+                    onChange={(e) => setScheduledProfessionalName(e.target.value)}
+                    size="md"
+                    borderRadius="lg"
+                  >
+                    {barbers.map((b) => (
+                      <option key={b.id} value={b.name}>
+                        {b.name}
+                      </option>
+                    ))}
+                  </Select>
+                  {(!activeSchedulingApt.professionalName ||
+                    activeSchedulingApt.professionalName.toLowerCase().includes('qualquer')) && (
+                    <Text fontSize="2xs" color="yellow.400" mt={1}>
+                      ⚠️ O cliente não escolheu nenhum profissional específico. Selecione acima quem fará o atendimento.
+                    </Text>
+                  )}
+                </FormControl>
 
                 <FormControl isRequired>
                   <FormLabel fontSize="xs" color="gray.300" fontWeight="600">
