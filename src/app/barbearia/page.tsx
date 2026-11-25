@@ -29,16 +29,14 @@ import {
 } from '@chakra-ui/react';
 import { FiClock, FiUser, FiCheck } from 'react-icons/fi';
 import { FaWhatsapp } from 'react-icons/fa';
-import { INITIAL_BARBER_SERVICES, INITIAL_PROFESSIONALS } from '@/lib/mockData';
+import { INITIAL_BARBER_SERVICES } from '@/lib/mockData';
 import { BarberService, Professional } from '@/types';
 import Link from 'next/link';
 import { generateBookingWhatsAppUrl, formatBookingMessage } from '@/lib/whatsapp';
 import { createDbAppointment, getDbProfessionals, getDbServices } from '@/services/db';
 
 export default function BarbeariaPage() {
-  const [barbers, setBarbers] = useState<Professional[]>(
-    INITIAL_PROFESSIONALS.filter((p) => p.role === 'barbeiro')
-  );
+  const [barbers, setBarbers] = useState<Professional[]>([]);
   const [services, setServices] = useState<BarberService[]>(INITIAL_BARBER_SERVICES);
 
   const [selectedService, setSelectedService] = useState<BarberService | null>(null);

@@ -62,7 +62,6 @@ import {
 import { FaWhatsapp } from 'react-icons/fa';
 import { generateConfirmationRequestWhatsAppUrl } from '@/lib/whatsapp';
 import {
-  INITIAL_PROFESSIONALS,
   INITIAL_MANICURE_SERVICES,
 } from '@/lib/mockData';
 import { Appointment, Professional, ManicureService, Product, OrderSale, AppointmentStatus } from '@/types';
@@ -128,11 +127,10 @@ export default function AdminManicurePage() {
         );
 
         setAppointments(manicureApts);
-        setProfessionals(
-          manicureProfs.length > 0
-            ? manicureProfs
-            : INITIAL_PROFESSIONALS.filter((p) => p.role === 'manicure')
-        );
+        setProfessionals(manicureProfs);
+        if (manicureProfs.length > 0) {
+          setNewAptManicurist((prev) => prev || manicureProfs[0].name);
+        }
         setServices(
           manicureServicesList.length > 0 ? manicureServicesList : INITIAL_MANICURE_SERVICES
         );
@@ -1977,6 +1975,7 @@ export default function AdminManicurePage() {
                   borderColor={borderColor}
                   value={newAptManicurist}
                   onChange={(e) => setNewAptManicurist(e.target.value)}
+                  placeholder={professionals.length === 0 ? 'Nenhuma manicure cadastrada' : 'Selecione a manicure'}
                 >
                   {professionals.map((m) => (
                     <option key={m.id} value={m.name}>

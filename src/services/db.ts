@@ -649,12 +649,10 @@ export async function updateDbOrderStatus(
 export async function getDbProfessionals(
   role?: 'barbeiro' | 'manicure'
 ): Promise<Professional[]> {
-  const fallback = role
-    ? INITIAL_PROFESSIONALS.filter((p) => p.role === role)
-    : INITIAL_PROFESSIONALS;
-
   if (!isSupabaseConfigured || !supabase) {
-    return fallback;
+    return role
+      ? INITIAL_PROFESSIONALS.filter((p) => p.role === role)
+      : INITIAL_PROFESSIONALS;
   }
 
   try {
@@ -670,9 +668,13 @@ export async function getDbProfessionals(
 
     const { data, error } = await query;
 
-    if (error || !data || data.length === 0) {
-      if (error) console.warn('Erro ao buscar profissionais no Supabase:', error?.message);
-      return fallback;
+    if (error) {
+      console.warn('Erro ao buscar profissionais no Supabase:', error?.message);
+      return [];
+    }
+
+    if (!data || data.length === 0) {
+      return [];
     }
 
     return (data as DbProfessionalRow[]).map((p) => ({
@@ -682,8 +684,9 @@ export async function getDbProfessionals(
       avatar: p.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400',
       specialty: p.specialty || '',
     }));
-  } catch {
-    return fallback;
+  } catch (err) {
+    console.error('Falha ao conectar com Supabase em getDbProfessionals:', err);
+    return [];
   }
 }
 

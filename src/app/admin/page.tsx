@@ -65,7 +65,6 @@ import {
   INITIAL_PRODUCTS,
   INITIAL_APPOINTMENTS,
   INITIAL_ORDERS,
-  INITIAL_PROFESSIONALS,
   INITIAL_BARBER_SERVICES,
 } from '@/lib/mockData';
 import { Product, Appointment, OrderSale, Professional, BarberService, ManicureService, AppointmentStatus } from '@/types';
@@ -100,7 +99,7 @@ export default function AdminPage() {
   const [appointments, setAppointments] = useState<Appointment[]>(INITIAL_APPOINTMENTS);
   const [orders, setOrders] = useState<OrderSale[]>(INITIAL_ORDERS);
   const [products, setProducts] = useState<Product[]>(INITIAL_PRODUCTS);
-  const [professionals, setProfessionals] = useState<Professional[]>(INITIAL_PROFESSIONALS);
+  const [professionals, setProfessionals] = useState<Professional[]>([]);
   const [services, setServices] = useState<(BarberService | ManicureService)[]>(INITIAL_BARBER_SERVICES);
 
   // Carrega dados do Supabase
@@ -122,11 +121,10 @@ export default function AdminPage() {
         setProducts(prods);
         setAppointments(barberApts);
         setOrders(barberOrders);
-        setProfessionals(
-          barberProfs.length > 0
-            ? barberProfs
-            : INITIAL_PROFESSIONALS.filter((p) => p.role === 'barbeiro')
-        );
+        setProfessionals(barberProfs);
+        if (barberProfs.length > 0) {
+          setNewAptBarber((prev) => prev || barberProfs[0].name);
+        }
         setServices(servs);
       } catch (err) {
         console.warn('Erro ao carregar dados do admin:', err);
@@ -215,7 +213,7 @@ export default function AdminPage() {
 
   // Estados para novo agendamento manual de barbearia
   const [newAptCustomer, setNewAptCustomer] = useState('');
-  const [newAptBarber, setNewAptBarber] = useState(INITIAL_PROFESSIONALS[0]?.name || '');
+  const [newAptBarber, setNewAptBarber] = useState('');
   const [newAptService, setNewAptService] = useState(INITIAL_BARBER_SERVICES[0]?.name || '');
   const [newAptPrice, setNewAptPrice] = useState('50.00');
   const [newAptDate, setNewAptDate] = useState(new Date().toISOString().split('T')[0]);
@@ -2217,6 +2215,7 @@ export default function AdminPage() {
                   borderColor={borderColor}
                   value={newAptBarber}
                   onChange={(e) => setNewAptBarber(e.target.value)}
+                  placeholder={barbers.length === 0 ? 'Nenhum barbeiro cadastrado' : 'Selecione o barbeiro'}
                 >
                   {barbers.map((b) => (
                     <option key={b.id} value={b.name}>

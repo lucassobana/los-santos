@@ -29,15 +29,13 @@ import {
 } from '@chakra-ui/react';
 import { FiClock, FiCheck } from 'react-icons/fi';
 import { FaWhatsapp } from 'react-icons/fa';
-import { INITIAL_MANICURE_SERVICES, INITIAL_PROFESSIONALS } from '@/lib/mockData';
+import { INITIAL_MANICURE_SERVICES } from '@/lib/mockData';
 import { ManicureService, Professional } from '@/types';
 import { generateBookingWhatsAppUrl, formatBookingMessage } from '@/lib/whatsapp';
 import { createDbAppointment, getDbProfessionals, getDbServices } from '@/services/db';
 
 export default function ManicurePublicPage() {
-  const [manicurists, setManicurists] = useState<Professional[]>(
-    INITIAL_PROFESSIONALS.filter((p) => p.role === 'manicure')
-  );
+  const [manicurists, setManicurists] = useState<Professional[]>([]);
   const [services, setServices] = useState<ManicureService[]>(INITIAL_MANICURE_SERVICES);
 
   const [selectedService, setSelectedService] = useState<ManicureService | null>(null);
